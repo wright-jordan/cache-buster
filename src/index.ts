@@ -52,8 +52,7 @@ async function replacePlaceholders(
   rootDir: string,
   outDir: string,
   paths: string[],
-  hashedFiles: { [oldPath: string]: string },
-  baseURL: string
+  hashedFiles: { [oldPath: string]: string }
 ): Promise<void> {
   const promises = [];
   for (let i = 0; i < paths.length; i++) {
@@ -70,7 +69,7 @@ async function replacePlaceholders(
                 oldRelativePath
               );
               const newPath = hashedFiles[oldPath]!;
-              return baseURL + path.relative(rootDir, newPath);
+              return "/" + path.relative(rootDir, newPath);
             });
         }
         const outRelativePath = path.relative(rootDir, hashedFiles[paths[i]!]!);
@@ -89,17 +88,15 @@ async function replacePlaceholders(
   await Promise.all(promises);
 }
 
-async function main(rootDir: string, outDir: string, baseURL: string) {
+async function main(rootDir: string, outDir: string) {
   const filePaths = await getFilePaths(rootDir);
   const hashedFiles = await hashFileNames(filePaths);
-  await replacePlaceholders(rootDir, outDir, filePaths, hashedFiles, baseURL);
+  await replacePlaceholders(rootDir, outDir, filePaths, hashedFiles);
 }
 
 const args = process.argv;
-if (args.length < 5) {
-  throw new Error(
-    "Arguments rootDir, outDir, and baseURL have not been provided."
-  );
+if (args.length < 4) {
+  throw new Error("Arguments rootDir and outDir have not been provided.");
 }
 
-await main(args[2]!, args[3]!, args[4]!);
+await main(args[2]!, args[3]!);
