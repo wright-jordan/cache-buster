@@ -23,10 +23,10 @@ async function generateFileHash(filePath) {
     return newPath;
 }
 async function hashFileNames(paths) {
-    const oldPaths = [];
+    // const oldPaths: string[] = [];
     const promises = [];
     for (let i = 0; i < paths.length; i++) {
-        oldPaths.push(paths[i]);
+        // oldPaths.push(paths[i]!);
         if (/\.html$/.test(paths[i])) {
             promises.push(Promise.resolve(paths[i]));
         }
@@ -36,8 +36,8 @@ async function hashFileNames(paths) {
     }
     const newPaths = await Promise.all(promises);
     const hashedFiles = {};
-    for (let i = 0; i < oldPaths.length; i++) {
-        hashedFiles[oldPaths[i]] = newPaths[i];
+    for (let i = 0; i < paths.length; i++) {
+        hashedFiles[paths[i]] = newPaths[i];
     }
     return hashedFiles;
 }
