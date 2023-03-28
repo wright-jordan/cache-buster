@@ -23,10 +23,8 @@ async function generateFileHash(filePath) {
     return newPath;
 }
 async function hashFileNames(paths) {
-    // const oldPaths: string[] = [];
     const promises = [];
     for (let i = 0; i < paths.length; i++) {
-        // oldPaths.push(paths[i]!);
         if (/\.html$/.test(paths[i])) {
             promises.push(Promise.resolve(paths[i]));
         }

@@ -1,5 +1,5 @@
 {
-  "name": "hash-assets",
+  "name": "cache-buster",
   "version": "0.1.0",
   "main": "dist/index.js",
   "scripts": {
