@@ -1,6 +1,6 @@
-import path from "path";
-import fs from "fs/promises";
-import { createHash } from "crypto";
+import path from "node:path";
+import fs from "node:fs/promises";
+import crypto from "node:crypto";
 
 async function getFilePaths(dir: string): Promise<string[]> {
   const dirents = await fs.readdir(dir, { withFileTypes: true });
@@ -20,14 +20,14 @@ async function getFilePaths(dir: string): Promise<string[]> {
 
 async function generateFileHash(filePath: string): Promise<string> {
   const buf = await fs.readFile(filePath);
-  const hash = createHash("sha256").update(buf).digest("base64url");
-  const newPath = filePath.replace(/\.[^(html)]+$/, (ext: string) => {
+  const hash = crypto.createHash("sha256").update(buf).digest("base64url");
+  const newPath = filePath.replace(/\.\w+$/, (ext: string) => {
     return `.${hash}${ext}`;
   });
   return newPath;
 }
 
-async function hashFileNames(paths: string[]): Promise<{
+async function generateFileHashes(paths: string[]): Promise<{
   [oldPath: string]: string;
 }> {
   const promises: Promise<string>[] = [];
@@ -39,20 +39,21 @@ async function hashFileNames(paths: string[]): Promise<{
     }
   }
   const newPaths = await Promise.all(promises);
-  const hashedFiles: { [oldPath: string]: string } = {};
+  const hashedFilePaths: { [oldPath: string]: string } = {};
   for (let i = 0; i < paths.length; i++) {
-    hashedFiles[paths[i]!] = newPaths[i]!;
+    hashedFilePaths[paths[i]!] = newPaths[i]!;
   }
-  return hashedFiles;
+  return hashedFilePaths;
 }
 
 async function replacePlaceholders(
   rootDir: string,
   outDir: string,
   paths: string[],
-  hashedFiles: { [oldPath: string]: string }
+  hashedFilePaths: { [oldPath: string]: string },
+  assetURL: string
 ): Promise<void> {
-  const promises = [];
+  const promises: Promise<void>[] = [];
   for (let i = 0; i < paths.length; i++) {
     promises.push(
       (async function () {
@@ -61,16 +62,19 @@ async function replacePlaceholders(
         if (/\.(?:html|css|js)$/.test(paths[i]!)) {
           outTxt = outFile
             .toString("utf-8")
-            .replace(/({{)([^{}]+)(}})/g, (_, __, oldRelativePath: string) => {
+            .replace(/({%)([^{}]+)(%})/g, (_, __, oldRelativePath: string) => {
               const oldPath = path.resolve(
                 path.dirname(paths[i]!),
                 oldRelativePath
               );
-              const newPath = hashedFiles[oldPath]!;
-              return "/" + path.relative(rootDir, newPath);
+              const newPath = hashedFilePaths[oldPath]!;
+              return assetURL + path.relative(rootDir, newPath);
             });
         }
-        const outRelativePath = path.relative(rootDir, hashedFiles[paths[i]!]!);
+        const outRelativePath = path.relative(
+          rootDir,
+          hashedFilePaths[paths[i]!]!
+        );
         const outPath = path.resolve(outDir, outRelativePath);
         await fs.mkdir(path.dirname(outPath), { recursive: true });
         if (outTxt) {
@@ -86,15 +90,23 @@ async function replacePlaceholders(
   await Promise.all(promises);
 }
 
-async function main(rootDir: string, outDir: string) {
+async function main(rootDir: string, outDir: string, assetURL: string) {
   const filePaths = await getFilePaths(rootDir);
-  const hashedFiles = await hashFileNames(filePaths);
-  await replacePlaceholders(rootDir, outDir, filePaths, hashedFiles);
+  const hashedFilePaths = await generateFileHashes(filePaths);
+  await replacePlaceholders(
+    rootDir,
+    outDir,
+    filePaths,
+    hashedFilePaths,
+    assetURL
+  );
 }
 
 const args = process.argv;
-if (args.length < 4) {
-  throw new Error("Arguments rootDir and outDir have not been provided.");
+if (args.length < 5) {
+  throw new Error(
+    "Arguments rootDir, outDir, and assetURL have not been provided."
+  );
 }
 
-await main(args[2]!, args[3]!);
+await main(args[2]!, args[3]!, args[4]!);
